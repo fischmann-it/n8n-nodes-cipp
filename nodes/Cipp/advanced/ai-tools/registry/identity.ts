@@ -1,0 +1,103 @@
+import type { ResourceConfig } from './types'
+import { P, TENANT } from './types'
+
+export const resourceConfig: ResourceConfig = {
+	label: 'Identity',
+	description: 'Manage audit logs, roles, directory objects, and deleted items',
+	operations: {
+		listAzureAdConnectStatus: {
+			method: 'GET',
+			endpoint: '/api/ListAzureADConnectStatus',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {
+				DataToReturn: P.qs('Data to return'),
+			},
+			description: 'List Azure AD Connect status',
+		},
+		listBasicAuth: {
+			method: 'GET',
+			endpoint: '/api/ListBasicAuth',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {},
+			description: 'List basic auth usage',
+		},
+		listAuditLogs: {
+			method: 'GET',
+			endpoint: '/api/ListAuditLogs',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {
+				StartDate: P.qs('Start date'),
+				EndDate: P.qs('End date'),
+				RelativeTime: P.qs('Relative time'),
+				LogId: P.qs('Log ID'),
+			},
+			description: 'List audit logs',
+		},
+		listDeletedItems: {
+			method: 'GET',
+			endpoint: '/api/ListDeletedItems',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {},
+			description: 'List deleted items',
+		},
+		listRoles: {
+			method: 'GET',
+			endpoint: '/api/ListRoles',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {},
+			description: 'List directory roles',
+		},
+		listOrg: {
+			method: 'GET',
+			endpoint: '/api/ListOrg',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {},
+			description: 'List organization info',
+		},
+		listPartnerRelationships: {
+			method: 'GET',
+			endpoint: '/api/ListPartnerRelationships',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {},
+			description: 'List partner relationships',
+		},
+		listDirectoryObjects: {
+			method: 'POST',
+			endpoint: '/api/ListDirectoryObjects',
+			isWrite: false,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				ids: P.body('Object IDs'),
+				asApp: P.bodyBool('As application'),
+				partnerLookup: P.bodyBool('Partner lookup'),
+			},
+			description: 'List directory objects by ID',
+		},
+		restoreDeleted: {
+			method: 'POST',
+			endpoint: '/api/ExecRestoreDeleted',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				ID: P.body('Object ID', true),
+			},
+			description: 'Restore a deleted directory object',
+		},
+	},
+}

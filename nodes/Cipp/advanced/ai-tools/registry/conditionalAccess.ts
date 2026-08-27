@@ -1,0 +1,168 @@
+import type { ResourceConfig } from './types'
+import { P, TENANT } from './types'
+
+export const resourceConfig: ResourceConfig = {
+	label: 'Conditional Access',
+	description: 'Manage CA policies, templates, named locations, and exclusions',
+	operations: {
+		listPolicies: {
+			method: 'GET',
+			endpoint: '/api/ListConditionalAccessPolicies',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {},
+			description: 'List conditional access policies',
+		},
+		addPolicy: {
+			method: 'POST',
+			endpoint: '/api/AddCAPolicy',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				TemplateList: P.bodyJson('Policy template JSON', true),
+			},
+			description: 'Add conditional access policy',
+		},
+		editPolicy: {
+			method: 'POST',
+			endpoint: '/api/EditCAPolicy',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				GUID: P.body('Policy GUID', true),
+			},
+			description: 'Edit conditional access policy',
+		},
+		removePolicy: {
+			method: 'POST',
+			endpoint: '/api/RemoveCAPolicy',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				GUID: P.body('Policy GUID', true),
+			},
+			description: 'Remove conditional access policy',
+		},
+		addTemplate: {
+			method: 'POST',
+			endpoint: '/api/AddCATemplate',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				name: P.body('Template name', true),
+				policySource: P.bodyJson('Policy source JSON', true),
+			},
+			description: 'Add CA template',
+		},
+		removeTemplate: {
+			method: 'POST',
+			endpoint: '/api/RemoveCATemplate',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				ID: P.body('Template ID', true),
+			},
+			description: 'Remove CA template',
+		},
+		listTemplates: {
+			method: 'GET',
+			endpoint: '/api/ListCAtemplates',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.none,
+			params: {
+				GUID: P.qs('Filter by GUID'),
+				ID: P.qs('Filter by ID'),
+			},
+			description: 'List CA templates',
+		},
+		addNamedLocation: {
+			method: 'POST',
+			endpoint: '/api/AddNamedLocation',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.bodySelected,
+			params: {
+				policyName: P.body('Location name', true),
+				Type: P.body('Location type', true),
+				Countries: P.bodyJson('Countries JSON'),
+				Ips: P.body('IP ranges'),
+			},
+			description: 'Add named location',
+		},
+		editNamedLocation: {
+			method: 'POST',
+			endpoint: '/api/ExecNamedLocation',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.qs,
+			params: {
+				namedLocationId: P.qs('Named location ID', true),
+				change: P.qs('Change type', true),
+				input: P.qs('Change value'),
+			},
+			description: 'Edit named location',
+		},
+		checkPolicy: {
+			method: 'POST',
+			endpoint: '/api/ExecCACheck',
+			isWrite: false,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				userID: P.body('User ID', true),
+			},
+			description: 'Check conditional access policy',
+		},
+		addExclusion: {
+			method: 'POST',
+			endpoint: '/api/ExecCAExclusion',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				UserID: P.body('User ID', true),
+				PolicyId: P.body('Policy ID', true),
+			},
+			description: 'Add CA exclusion',
+		},
+		addServiceExclusion: {
+			method: 'POST',
+			endpoint: '/api/ExecCAServiceExclusion',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				GUID: P.body('Service GUID', true),
+			},
+			description: 'Add CA service exclusion',
+		},
+		listNamedLocations: {
+			method: 'GET',
+			endpoint: '/api/ListNamedLocations',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {},
+			description: 'List named locations',
+		},
+		listPolicyChanges: {
+			method: 'GET',
+			endpoint: '/api/ListConditionalAccessPolicyChanges',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {
+				displayName: P.qs('Filter by name'),
+				id: P.qs('Filter by ID'),
+			},
+			description: 'List CA policy changes',
+		},
+	},
+}

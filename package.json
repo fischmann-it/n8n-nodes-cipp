@@ -1,7 +1,7 @@
 {
   "name": "@joshuanode/n8n-nodes-cipp",
-  "version": "0.0.33",
-  "description": "n8n community node for CIPP.app - Microsoft 365 multi-tenant management",
+	"version": "0.1.6",
+  "description": "n8n community nodes for CIPP.app automation and AI-agent tooling",
   "license": "MIT",
   "keywords": [
     "n8n-community-node-package",
@@ -43,6 +43,7 @@
     "dev": "n8n-node dev",
     "lint": "n8n-node lint",
     "lint:fix": "n8n-node lint --fix",
+    "test": "npm run build && node --test test/*.test.js",
     "release": "n8n-node release"
   },
   "n8n": {
@@ -52,7 +53,8 @@
       "dist/credentials/CippApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/Cipp/CippApp.node.js"
+      "dist/nodes/Cipp/CippApp.node.js",
+      "dist/nodes/Cipp/advanced/CippAdvancedAiTools.node.js"
     ]
   },
   "devDependencies": {
@@ -60,9 +62,16 @@
     "eslint": "9.32.0",
     "n8n-workflow": "*",
     "prettier": "3.6.2",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "zod": "3.23.8"
   },
   "peerDependencies": {
-    "n8n-workflow": "*"
+    "n8n-workflow": "*",
+    "@langchain/core": "*"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": {
+      "optional": true
+    }
   }
 }

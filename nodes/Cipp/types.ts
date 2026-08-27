@@ -5,11 +5,6 @@ export interface ICippCredentials {
 	clientSecret: string;
 }
 
-export interface IAuthToken {
-	accessToken: string;
-	expiresAt: number;
-}
-
 export interface ITenant {
 	customerId: string;
 	defaultDomainName: string;
@@ -33,7 +28,6 @@ export interface IGraphRequestParams {
 	$orderby?: string;
 	$top?: number;
 	$count?: boolean;
-	manualPagination?: boolean;
 	ReverseTenantLookup?: boolean;
 }
 

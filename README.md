@@ -25,12 +25,27 @@ This node provides full integration with the CIPP API, enabling automation of:
 - **CIPP v10.6 APIs** - Copilot and Shadow AI, SharePoint sharing and recovery, CVE management, audit coverage, and Agent 365 reports
 - **Tools** - Breach search, Graph API requests, ExecGraphRequest
 - **CIPP System** - Scheduled jobs, backups
+- **Expanded API Coverage** - 631 operations across the original and expanded CIPP resources
+- **AI Agent Tools** - 480 schema-driven operations for n8n AI Agent and MCP Trigger workflows
+- **Composite Workflows** - License audit, security posture, BEC investigation, User 360, and cross-tenant sweep
 
 ### User-Friendly Design
 
 - **Tenant Selector** - Searchable dropdown to select tenants by name
 - **Field Picker** - Multi-select for user properties (no need to memorize Graph API field names)
 - **Smart Defaults** - Sensible default selections to keep responses fast and small
+
+### CIPP.app AI Tools
+
+The package also installs a separate **CIPP.app AI Tools** node. Connect it to an n8n AI Agent or MCP Trigger using the AI Tool connection, select a resource, and explicitly choose which operations the agent may call.
+
+- Write operations are hidden and blocked by default.
+- Enabling **Allow Write Operations** is required before mutating operations can be selected or executed.
+- The write restriction is checked both when constructing the tool and immediately before execution.
+- Each selected resource exposes a runtime-generated parameter schema to the agent.
+- Composite workflows remain read-only and can also be run through the regular CIPP.app node.
+
+`Run Exchange Request` is treated as a write-capable AI operation because the selected Exchange cmdlet can mutate tenant state.
 
 ## Installation
 
@@ -135,6 +150,8 @@ $select: id,displayName,userPrincipalName
 $filter: startsWith(displayName,'John')
 ```
 
+OData parameters may be entered in the dedicated Options fields or directly in the endpoint, such as `users?$filter=accountEnabled eq true&$select=id,displayName&$top=5`. Dedicated fields take precedence when both are supplied. By default the operation requests one Graph page with a 60-second timeout. Enable **Return All** to follow CIPP's manual pagination cursor with a 25-page safety cap (configurable up to 100) and one 120-second deadline for the whole operation. Continuation calls pass CIPP the exact absolute Microsoft Graph `nextLink`; repeated cursors, repeated page content, invalid cursor hosts, and overlong pagination all fail safely instead of hanging a worker.
+
 ### CIPP v10.5 APIs
 
 ```
@@ -222,6 +239,10 @@ npm link
 - [CIPP Documentation](https://docs.cipp.app)
 - [CIPP API Endpoints](https://docs.cipp.app/api-documentation/endpoints/)
 - [n8n Community Nodes](https://docs.n8n.io/integrations/community-nodes/)
+
+## Acknowledgements
+
+Expanded operation coverage, modular handlers, composite workflows, and AI-tool support were adapted from [Max Soukhomlinov's n8n-nodes-cipp-advanced](https://github.com/msoukhomlinov/n8n-nodes-cipp-advanced), an MIT-licensed rewrite originally based on this project.
 
 ## License
 

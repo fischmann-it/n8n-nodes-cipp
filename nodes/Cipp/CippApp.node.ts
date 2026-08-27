@@ -20,6 +20,20 @@ import {
 } from './GenericFunctions';
 
 import { operationFields, resourceFields } from './descriptions';
+import {
+	getAdvancedRouterResource,
+	isAdvancedOnlyOperation,
+} from './descriptions/AdvancedOperations';
+import { router as advancedRouter } from './advanced/actions/router';
+import {
+	buildGraphRequestQuery,
+	extractGraphPage,
+	GRAPH_MAX_PAGES_DEFAULT,
+	GRAPH_REQUEST_TIMEOUT_MS,
+	paginateGraphRequest,
+	parseGraphMaxPages,
+	withGraphRequestDeadline,
+} from './GraphRequestUtils';
 
 export class CippApp implements INodeType {
 	description: INodeTypeDescription = {
@@ -70,6 +84,16 @@ export class CippApp implements INodeType {
 						description: 'Manage CIPP backups',
 					},
 					{
+						name: 'CIPP Admin',
+						value: 'cippAdmin',
+						description: 'Manage CIPP platform settings, setup, extensions, and webhooks',
+					},
+					{
+						name: 'CIPP Core',
+						value: 'cippCore',
+						description: 'Manage CIPP diagnostics, functions, versions, and logs',
+					},
+					{
 						name: 'CIPP v10.5',
 						value: 'cippV105',
 						description: 'Use CIPP v10.5 API additions',
@@ -83,6 +107,11 @@ export class CippApp implements INodeType {
 						name: 'Conditional Access',
 						value: 'conditionalAccess',
 						description: 'Manage conditional access policies and named locations',
+					},
+					{
+						name: 'Contact',
+						value: 'contact',
+						description: 'Manage Exchange contacts, templates, and permissions',
 					},
 					{
 						name: 'Device',
@@ -155,6 +184,11 @@ export class CippApp implements INodeType {
 						description: 'Manage SharePoint sites, quotas, and settings',
 					},
 					{
+						name: 'Spam Filter',
+						value: 'spamfilter',
+						description: 'Manage spam filters, quarantine policies, and templates',
+					},
+					{
 						name: 'Standard',
 						value: 'standards',
 						description: 'Manage tenant standards, drift, BPA, and domain analyser',
@@ -185,6 +219,11 @@ export class CippApp implements INodeType {
 						description: 'Breach search and Graph requests',
 					},
 					{
+						name: 'Transport',
+						value: 'transport',
+						description: 'Manage transport rules, connectors, and connection filters',
+					},
+					{
 						name: 'User',
 						value: 'user',
 						description: 'Manage Azure AD users',
@@ -193,6 +232,11 @@ export class CippApp implements INodeType {
 						name: 'Voice',
 						value: 'voice',
 						description: 'Manage Teams Voice',
+					},
+					{
+						name: 'Workflow',
+						value: 'workflows',
+						description: 'Run composite CIPP investigations, audits, and cross-tenant sweeps',
 					},
 				],
 				default: 'tenant',
@@ -360,6 +404,52 @@ export class CippApp implements INodeType {
 		};
 		const hasPayloadContent = (payload: IDataObject | IDataObject[]): boolean =>
 			Array.isArray(payload) ? payload.length > 0 : Object.keys(payload).length > 0;
+		const getOffboardRecipientValue = (value: unknown): unknown => {
+			if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
+
+			const recipient = value as IDataObject;
+			return recipient.value ?? recipient.userPrincipalName ?? recipient.UserPrincipalName ?? recipient.id;
+		};
+		const normalizeOffboardRecipients = (
+			value: unknown,
+			fieldName: string,
+			itemIndex: number,
+		): string[] => {
+			let recipients = value;
+			if (typeof recipients === 'string') {
+				const trimmed = recipients.trim();
+				if (!trimmed) return [];
+				if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+					try {
+						recipients = JSON.parse(trimmed) as unknown;
+					} catch {
+						throw new NodeOperationError(
+							this.getNode(),
+							`${fieldName} must be a comma-separated list or valid JSON.`,
+							{ itemIndex },
+						);
+					}
+				} else {
+					recipients = trimmed.split(',');
+				}
+			}
+
+			const normalized = (Array.isArray(recipients) ? recipients : [recipients])
+				.map((recipient) => getOffboardRecipientValue(recipient))
+				.filter((recipient): recipient is string => typeof recipient === 'string')
+				.map((recipient) => recipient.trim())
+				.filter(Boolean);
+
+			if (normalized.length === 0) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`${fieldName} must contain at least one user identifier.`,
+					{ itemIndex },
+				);
+			}
+
+			return normalized;
+		};
 		const isTeamsScheduleEndpoint = (endpoint: string): boolean =>
 			/^teams\/[^/]+\/schedule(?:\/.*)?$/i.test(endpoint);
 		const normalizeCippEndpoint = (endpoint: string): string => {
@@ -479,7 +569,15 @@ export class CippApp implements INodeType {
 				};
 
 				// ==================== TENANT ====================
-				if (resource === 'tenant') {
+				if (isAdvancedOnlyOperation(resource, operation)) {
+					responseData = await advancedRouter(
+						this,
+						getAdvancedRouterResource(resource),
+						operation,
+						i,
+					);
+				}
+				else if (resource === 'tenant') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
@@ -836,31 +934,74 @@ export class CippApp implements INodeType {
 							tenantFilter,
 							user: userValues.map((value) => ({ value })),
 						};
+						// Keep this list aligned with Test-CIPPOffboardingRequest and
+						// Invoke-CIPPOffboardingJob; the generated OpenAPI schema can lag those sources.
 						const supportedOffboardOptions = [
 							'DisableSignIn',
 							'RevokeSessions',
 							'ResetPass',
+							'removeCalendarInvites',
+							'removePermissions',
+							'removeCalendarPermissions',
+							'RemoveRules',
 							'RemoveGroups',
 							'RemoveLicenses',
 							'RemoveMobile',
 							'ConvertToShared',
 							'HideFromGAL',
+							'ClearImmutableId',
+							'RemoveMFADevices',
+							'RemoveTeamsPhoneDID',
+							'DeleteUser',
+							'DisableOneDriveSharing',
+							'disableForwarding',
 							'OOO',
 							'forward',
+							'KeepCopy',
 							'OnedriveAccess',
 							'AccessAutomap',
 							'AccessNoAutomap',
 						];
+						const collectionOffboardOptions = new Set([
+							'OnedriveAccess',
+							'AccessAutomap',
+							'AccessNoAutomap',
+						]);
+						const applyOffboardOption = (key: string, value: unknown): void => {
+							if (value === undefined || value === null || value === '' || value === false) return;
+
+							if (collectionOffboardOptions.has(key)) {
+								// The executable CIPP helpers accept scalar or array recipients and normalize
+								// label/value objects themselves; send string arrays for multiple recipients.
+								offboardBody[key] = normalizeOffboardRecipients(value, key, i);
+								return;
+							}
+
+							if (key === 'forward') {
+								const recipient = getOffboardRecipientValue(value);
+								if (typeof recipient !== 'string' || !recipient.trim()) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'Forward Email To must contain a user identifier.',
+										{ itemIndex: i },
+									);
+								}
+								// Invoke-CIPPOffboardingJob reads Options.forward.value even though the
+								// generated OpenAPI schema currently describes this field as a string.
+								offboardBody.forward = { value: recipient.trim() };
+								return;
+							}
+
+							offboardBody[key] =
+								typeof value === 'object' && 'value' in value
+									? (value as IDataObject).value
+									: value;
+						};
 						for (const userEntry of userEntries) {
 							if (typeof userEntry !== 'object' || userEntry === null) continue;
 							for (const key of supportedOffboardOptions) {
 								const value = (userEntry as IDataObject)[key];
-								if (value !== undefined && value !== '' && value !== false) {
-									offboardBody[key] =
-										typeof value === 'object' && value !== null && 'value' in value
-											? (value as IDataObject).value
-											: value;
-								}
+								applyOffboardOption(key, value);
 							}
 						}
 						if (scheduled) {
@@ -877,12 +1018,22 @@ export class CippApp implements INodeType {
 							offboardBody.Scheduled = { enabled: true, date: scheduledDateUnix };
 						}
 						for (const [key, value] of Object.entries(offboardOptions)) {
-							if (value !== undefined && value !== '' && value !== false) {
-								offboardBody[key] =
-									typeof value === 'object' && value !== null && 'value' in value
-										? (value as IDataObject).value
-										: value;
-							}
+							applyOffboardOption(key, value);
+						}
+						if (offboardBody.disableForwarding === true && offboardBody.forward) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Disable Email Forwarding and Forward Email To cannot be used together.',
+								{ itemIndex: i },
+							);
+						}
+						const postExecution = this.getNodeParameter('offboardPostExecution', i, {}) as IDataObject;
+						if (Object.values(postExecution).some((value) => value === true)) {
+							offboardBody.PostExecution = postExecution;
+						}
+						const reference = this.getNodeParameter('offboardReference', i, '') as string;
+						if (reference.trim()) {
+							offboardBody.reference = reference.trim();
 						}
 
 						responseData = await cippApiRequest.call(
@@ -1118,8 +1269,8 @@ export class CippApp implements INodeType {
 									? (parsedLicense.requests as IDataObject[])
 									: [parsedLicense]
 						).map((request) => ({
-							tenantFilter,
 							...request,
+							tenantFilter,
 						}));
 
 						responseData = await cippApiRequest.call(
@@ -1333,8 +1484,8 @@ export class CippApp implements INodeType {
 							throw new NodeOperationError(this.getNode(), 'Template JSON must be valid JSON', { itemIndex: i });
 						}
 						responseData = await cippApiRequest.call(this, 'POST', '/api/AddCATemplate', {
-							tenantFilter,
 							...templateData,
+							tenantFilter,
 						}, {});
 					} else if (operation === 'removeTemplate') {
 						const templateId = this.getNodeParameter('caTemplateId', i) as string;
@@ -1680,11 +1831,11 @@ export class CippApp implements INodeType {
 						const domain = this.getNodeParameter('domain', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 						responseData = await cippApiRequest.call(this, 'POST', '/api/AddSharedMailbox', {
+							...additionalFields,
 							tenantID: tenantFilter,
 							displayName,
 							username,
 							domain,
-							...additionalFields,
 						}, {});
 
 					// ---------- Existing operations ----------
@@ -2219,10 +2370,10 @@ export class CippApp implements INodeType {
 							'POST',
 							'/api/ExecSetSecurityAlert',
 							{
+								...additionalFields,
 								tenantFilter,
 								ID: alertId,
 								Status: status,
-								...additionalFields,
 							},
 							{},
 						);
@@ -2428,13 +2579,13 @@ export class CippApp implements INodeType {
 						const chocoOptions = this.getNodeParameter('chocoOptions', i, {}) as IDataObject;
 
 						const body: IDataObject = {
+							...chocoOptions,
 							tenantFilter,
 							PackageName: packageName,
 							ApplicationName: appName,
 							Description: appDescription,
 							UninstallApp: uninstall,
 							AssignTo: assignTo,
-							...chocoOptions,
 						};
 
 						if (assignTo === 'customGroup') {
@@ -2470,11 +2621,11 @@ export class CippApp implements INodeType {
 						const officeOptions = this.getNodeParameter('officeOptions', i, {}) as IDataObject;
 
 						const body: IDataObject = {
+							...officeOptions,
 							tenantFilter,
 							ExcludeApps: excludedApps,
 							UpdateChannel: updateChannel,
 							AssignTo: assignTo,
-							...officeOptions,
 						};
 
 						responseData = await cippApiRequest.call(this, 'POST', '/api/AddOfficeApp', body, {});
@@ -2921,13 +3072,8 @@ export class CippApp implements INodeType {
 							});
 						}
 
-						if (!query.tenantFilter) {
-							query.tenantFilter = tenantFilter;
-						}
-
-						if (!body.tenantFilter) {
-							body.tenantFilter = tenantFilter;
-						}
+						query.tenantFilter = tenantFilter;
+						body.tenantFilter = tenantFilter;
 					}
 
 					const options = this.getNodeParameter('v105Options', i, {}) as IDataObject;
@@ -2994,8 +3140,8 @@ export class CippApp implements INodeType {
 					if (includeTenant) {
 						const tenantFilter = getResourceLocatorValue(this.getNodeParameter('tenantFilter', i) as IDataObject);
 						if (!tenantFilter) throw new NodeOperationError(this.getNode(), 'Tenant is required.', { itemIndex: i });
-						if (!query.tenantFilter) query.tenantFilter = tenantFilter;
-						if (!body.tenantFilter) body.tenantFilter = tenantFilter;
+						query.tenantFilter = tenantFilter;
+						body.tenantFilter = tenantFilter;
 					}
 					const options = this.getNodeParameter('v106Options', i, {}) as IDataObject;
 					const maxPayloadBytes = Number(options.maxPayloadBytes ?? 262144);
@@ -3073,14 +3219,8 @@ export class CippApp implements INodeType {
 						if (includeTenant) {
 							const tenantFilterValue = this.getNodeParameter('cippApiTenantFilter', i) as IDataObject;
 							const tenantFilter = getResourceLocatorValue(tenantFilterValue);
-
-							if (!query.tenantFilter) {
-								query.tenantFilter = tenantFilter;
-							}
-
-							if (!body.tenantFilter) {
-								body.tenantFilter = tenantFilter;
-							}
+							query.tenantFilter = tenantFilter;
+							body.tenantFilter = tenantFilter;
 						}
 
 						const options = this.getNodeParameter('cippApiOptions', i, {}) as IDataObject;
@@ -3107,19 +3247,56 @@ export class CippApp implements INodeType {
 						const tenantFilter = getTenantFilter();
 						const endpoint = this.getNodeParameter('graphEndpoint', i) as string;
 						const graphOptions = this.getNodeParameter('graphOptions', i, {}) as IDataObject;
+						const returnAll = this.getNodeParameter('graphReturnAll', i, false) as boolean;
+						let qs: IDataObject;
+						try {
+							qs = buildGraphRequestQuery(tenantFilter, endpoint, graphOptions);
+						} catch (error) {
+							throw new NodeOperationError(
+								this.getNode(),
+								error instanceof Error ? error.message : String(error),
+								{ itemIndex: i },
+							);
+						}
 
-						const qs: IDataObject = {
-							tenantFilter,
-							Endpoint: endpoint,
-						};
-
-						if (graphOptions.select) qs['$select'] = graphOptions.select;
-						if (graphOptions.filter) qs['$filter'] = graphOptions.filter;
-						if (graphOptions.orderby) qs['$orderby'] = graphOptions.orderby;
-						if (graphOptions.top) qs['$top'] = graphOptions.top;
-						if (graphOptions.count) qs['$count'] = graphOptions.count;
-
-						responseData = await cippApiRequest.call(this, 'GET', '/api/ListGraphRequest', {}, qs);
+						if (!returnAll) {
+							qs.manualPagination = true;
+							qs.NoPagination = true;
+							const firstResponse = await withGraphRequestDeadline(
+								async () => await cippApiRequest.call(
+									this,
+									'GET',
+									'/api/ListGraphRequest',
+									{},
+									qs,
+								),
+								GRAPH_REQUEST_TIMEOUT_MS,
+							);
+							responseData = extractGraphPage(firstResponse).items;
+						} else {
+							try {
+								const maxPages = parseGraphMaxPages(
+									this.getNodeParameter('graphMaxPages', i, GRAPH_MAX_PAGES_DEFAULT),
+								);
+								responseData = await paginateGraphRequest(
+									qs,
+									async (pageQuery) => await cippApiRequest.call(
+										this,
+										'GET',
+										'/api/ListGraphRequest',
+										{},
+										pageQuery,
+									),
+									{ maxPages },
+								);
+							} catch (error) {
+								throw new NodeOperationError(
+									this.getNode(),
+									error instanceof Error ? error.message : String(error),
+									{ itemIndex: i },
+								);
+							}
+						}
 					} else if (operation === 'execGraphRequest') {
 						const tenantFilter = getTenantFilter();
 						const rawEndpoint = this.getNodeParameter('execEndpoint', i) as string;
@@ -3718,8 +3895,8 @@ export class CippApp implements INodeType {
 							'POST',
 							'/api/AddPolicy',
 							{
+								...parseJsonObjectPayload(policyConfig, 'Policy Config', i),
 								tenantFilter,
-								...JSON.parse(policyConfig),
 							},
 							{},
 						);

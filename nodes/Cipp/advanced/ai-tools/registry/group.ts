@@ -1,0 +1,145 @@
+import type { ResourceConfig } from './types';
+import { P, TENANT } from './types';
+
+export const resourceConfig: ResourceConfig = {
+	label: 'Group',
+	description: 'Manage Azure AD groups, templates, and sender authentication',
+	operations: {
+		getAll: {
+			method: 'GET',
+			endpoint: '/api/ListGroups',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {
+				groupID: P.qs('Filter by group ID'),
+				members: P.qsBool('Include members'),
+				owners: P.qsBool('Include owners'),
+			},
+			description: 'List all groups',
+		},
+		add: {
+			method: 'POST',
+			endpoint: '/api/AddGroup',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				displayName: P.body('Group name', true),
+				groupType: P.body('Group type', true),
+			},
+			description: 'Add a group',
+		},
+		edit: {
+			method: 'PATCH',
+			endpoint: '/api/EditGroup',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				groupId: P.body('Group ID', true),
+				AddMember: P.body('Members to add (comma-separated)'),
+				RemoveMember: P.body('Members to remove'),
+				AddOwner: P.body('Owners to add'),
+				RemoveOwner: P.body('Owners to remove'),
+			},
+			description: 'Edit group membership',
+		},
+		delete: {
+			method: 'POST',
+			endpoint: '/api/ExecGroupsDelete',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				id: P.body('Group ID', true),
+				GroupType: P.body('Group type', true),
+			},
+			description: 'Delete a group',
+		},
+		hideFromGal: {
+			method: 'POST',
+			endpoint: '/api/ExecGroupsHideFromGAL',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				ID: P.body('Group ID', true),
+				GroupType: P.body('Group type', true),
+				HideFromGAL: P.body('Hide flag (true/false)', true),
+			},
+			description: 'Hide or show group in GAL',
+		},
+		deliveryManagement: {
+			method: 'POST',
+			endpoint: '/api/ExecGroupsDeliveryManagement',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				ID: P.body('Group ID', true),
+				GroupType: P.body('Group type', true),
+				OnlyAllowInternal: P.body('Internal only (true/false)', true),
+			},
+			description: 'Set group delivery management',
+		},
+		addTeam: {
+			method: 'POST',
+			endpoint: '/api/AddGroupTeam',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.bodyPascal,
+			params: {
+				GroupId: P.body('Group ID', true),
+			},
+			description: 'Add Teams team to group',
+		},
+		addTemplate: {
+			method: 'POST',
+			endpoint: '/api/AddGroupTemplate',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				displayname: P.body('Template name', true),
+				groupType: P.body('Group type', true),
+				Description: P.body('Description'),
+			},
+			description: 'Add group template',
+		},
+		removeTemplate: {
+			method: 'POST',
+			endpoint: '/api/RemoveGroupTemplate',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				ID: P.body('Template ID', true),
+			},
+			description: 'Remove group template',
+		},
+		listTemplates: {
+			method: 'GET',
+			endpoint: '/api/ListGroupTemplates',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.none,
+			params: {
+				id: P.qs('Filter by template ID'),
+			},
+			description: 'List group templates',
+		},
+		listSenderAuthentication: {
+			method: 'GET',
+			endpoint: '/api/ListGroupSenderAuthentication',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {
+				groupid: P.qs('Group ID'),
+				Type: P.qs('Filter type'),
+			},
+			description: 'List group sender authentication settings',
+		},
+	},
+};

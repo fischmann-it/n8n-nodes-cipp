@@ -515,7 +515,38 @@ export const toolsFields: INodeProperties[] = [
 		},
 		default: 'users',
 		placeholder: 'e.g. users, groups, devices',
-		description: 'The Graph API endpoint to call',
+		description: 'The relative Graph API endpoint to call. OData query parameters can be included here or supplied under Options.',
+	},
+	{
+		displayName: 'Return All',
+		name: 'graphReturnAll',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['tools'],
+				operation: ['graphRequest'],
+			},
+		},
+		description: 'Whether to retrieve every Graph page using CIPP manual pagination. When disabled, the node requests one page and $top controls its maximum size.',
+	},
+	{
+		displayName: 'Max Pages',
+		name: 'graphMaxPages',
+		type: 'number',
+		default: 25,
+		typeOptions: {
+			minValue: 1,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				resource: ['tools'],
+				operation: ['graphRequest'],
+				graphReturnAll: [true],
+			},
+		},
+		description: 'Maximum number of Graph pages to request before failing safely',
 	},
 	{
 		displayName: 'Options',
@@ -538,6 +569,13 @@ export const toolsFields: INodeProperties[] = [
 				description: 'Whether to include count',
 			},
 			{
+				displayName: '$Expand',
+				name: 'expand',
+				type: 'string',
+				default: '',
+				description: 'Related entities to expand',
+			},
+			{
 				displayName: '$Filter',
 				name: 'filter',
 				type: 'string',
@@ -546,12 +584,26 @@ export const toolsFields: INodeProperties[] = [
 				description: 'OData filter',
 			},
 			{
+				displayName: '$Format',
+				name: 'format',
+				type: 'string',
+				default: '',
+				description: 'Response format requested from Microsoft Graph',
+			},
+			{
 				displayName: '$Orderby',
 				name: 'orderby',
 				type: 'string',
 				default: '',
 				placeholder: 'displayName',
 				description: 'Field to order by',
+			},
+			{
+				displayName: '$Search',
+				name: 'search',
+				type: 'string',
+				default: '',
+				description: 'Microsoft Graph search expression. CIPP applies complex-query handling for $search and $count.',
 			},
 			{
 				displayName: '$Select',
@@ -566,7 +618,7 @@ export const toolsFields: INodeProperties[] = [
 				name: 'top',
 				type: 'number',
 				default: 100,
-				description: 'Number of records to return',
+				description: 'Page size. With Return All disabled this is also the maximum number of records returned.',
 			},
 		],
 	},

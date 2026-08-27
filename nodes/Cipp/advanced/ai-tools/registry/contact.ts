@@ -1,0 +1,146 @@
+import type { ResourceConfig } from './types'
+import { P, TENANT } from './types'
+
+export const resourceConfig: ResourceConfig = {
+	label: 'Contact',
+	description: 'Manage Exchange contacts, templates, deployment, and permissions',
+	operations: {
+		listContacts: {
+			method: 'GET',
+			endpoint: '/api/ListContacts',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {
+				id: P.qs('Filter by contact ID'),
+			},
+			description: 'List contacts',
+		},
+		addContact: {
+			method: 'POST',
+			endpoint: '/api/AddContact',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.bodyLower,
+			params: {
+				displayName: P.body('Display name', true),
+				email: P.body('Email address', true),
+				firstName: P.body('First name'),
+				lastName: P.body('Last name'),
+				phone: P.body('Phone'),
+				Company: P.body('Company'),
+				Title: P.body('Title'),
+			},
+			description: 'Add contact',
+		},
+		editContact: {
+			method: 'POST',
+			endpoint: '/api/EditContact',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.bodyTenantID,
+			params: {
+				ContactID: P.body('Contact ID', true),
+				displayName: P.body('Display name'),
+				email: P.body('Email'),
+				firstName: P.body('First name'),
+				LastName: P.body('Last name'),
+			},
+			description: 'Edit contact',
+		},
+		removeContact: {
+			method: 'POST',
+			endpoint: '/api/RemoveContact',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				GUID: P.body('Contact GUID', true),
+				Mail: P.body('Email address'),
+			},
+			description: 'Remove contact',
+		},
+		listContactTemplates: {
+			method: 'GET',
+			endpoint: '/api/ListContactTemplates',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.none,
+			params: {
+				id: P.qs('Filter by template ID'),
+			},
+			description: 'List contact templates',
+		},
+		addContactTemplate: {
+			method: 'POST',
+			endpoint: '/api/AddContactTemplates',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				displayName: P.body('Display name', true),
+				firstName: P.body('First name'),
+				lastName: P.body('Last name'),
+				email: P.body('Email'),
+			},
+			description: 'Add contact template',
+		},
+		editContactTemplate: {
+			method: 'POST',
+			endpoint: '/api/EditContactTemplates',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				ContactTemplateID: P.body('Template ID', true),
+				displayName: P.body('Display name'),
+			},
+			description: 'Edit contact template',
+		},
+		removeContactTemplate: {
+			method: 'POST',
+			endpoint: '/api/RemoveContactTemplates',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				ID: P.body('Template ID', true),
+			},
+			description: 'Remove contact template',
+		},
+		deployContactTemplates: {
+			method: 'POST',
+			endpoint: '/api/DeployContactTemplates',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.bodySelected,
+			params: {
+				TemplateList: P.bodyJson('Template list JSON', true),
+			},
+			description: 'Deploy contact templates',
+		},
+		listContactPermissions: {
+			method: 'GET',
+			endpoint: '/api/ListContactPermissions',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.qs,
+			params: {
+				UserID: P.qs('Filter by user ID'),
+			},
+			description: 'List contact permissions',
+		},
+		modifyContactPermissions: {
+			method: 'POST',
+			endpoint: '/api/ExecModifyContactPerms',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.body,
+			params: {
+				userID: P.body('User ID', true),
+				permissions: P.body('Permissions', true),
+			},
+			description: 'Modify contact permissions',
+		},
+	},
+}

@@ -1,0 +1,155 @@
+import type { ResourceConfig } from './types';
+import { P, TENANT } from './types';
+
+export const resourceConfig: ResourceConfig = {
+	label: 'GDAP',
+	description: 'Manage GDAP partner relationships, roles, invites, and access',
+	operations: {
+		listRoles: {
+			method: 'GET',
+			endpoint: '/api/ListGDAPRoles',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.none,
+			params: {},
+			description: 'List GDAP roles',
+		},
+		listAccessAssignments: {
+			method: 'GET',
+			endpoint: '/api/ListGDAPAccessAssignments',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.none,
+			params: {
+				Id: P.qs('Assignment ID'),
+			},
+			description: 'List GDAP access assignments',
+		},
+		listInvites: {
+			method: 'GET',
+			endpoint: '/api/ListGDAPInvite',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.none,
+			params: {
+				RelationshipId: P.qs('Relationship ID'),
+			},
+			description: 'List GDAP invites',
+		},
+		listApprovedInvites: {
+			method: 'GET',
+			endpoint: '/api/ExecGDAPInviteApproved',
+			isWrite: false,
+			isList: true,
+			tenant: TENANT.none,
+			params: {},
+			description: 'List approved GDAP invites',
+		},
+		addRole: {
+			method: 'POST',
+			endpoint: '/api/ExecAddGDAPRole',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				Action: P.body('Action', true),
+				gdapTemplate: P.bodyJson('GDAP template'),
+				Reference: P.body('Reference'),
+				templateId: P.body('Template ID'),
+			},
+			description: 'Add GDAP role',
+		},
+		autoExtend: {
+			method: 'POST',
+			endpoint: '/api/ExecAutoExtendGDAP',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				ID: P.body('GDAP ID', true),
+			},
+			description: 'Auto-extend GDAP relationship',
+		},
+		deleteRelationship: {
+			method: 'POST',
+			endpoint: '/api/ExecDeleteGDAPRelationship',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				GDAPId: P.body('GDAP ID', true),
+			},
+			description: 'Delete GDAP relationship',
+		},
+		deleteRoleMapping: {
+			method: 'POST',
+			endpoint: '/api/ExecDeleteGDAPRoleMapping',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				GroupId: P.body('Group ID', true),
+			},
+			description: 'Delete GDAP role mapping',
+		},
+		manageAccessAssignment: {
+			method: 'PATCH',
+			endpoint: '/api/ExecGDAPAccessAssignment',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				Action: P.body('Action', true),
+				Id: P.body('Assignment ID', true),
+				RoleTemplateId: P.body('Role template ID'),
+			},
+			description: 'Manage GDAP access assignment',
+		},
+		removeGARole: {
+			method: 'POST',
+			endpoint: '/api/ExecGDAPRemoveGArole',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				GDAPId: P.body('GDAP ID', true),
+			},
+			description: 'Remove Global Admin role from GDAP',
+		},
+		sendInvite: {
+			method: 'DELETE',
+			endpoint: '/api/ExecGDAPInvite',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				Action: P.body('Action', true),
+				InviteId: P.body('Invite ID'),
+				Reference: P.body('Reference'),
+			},
+			description: 'Send or delete GDAP invite',
+		},
+		deleteRoleTemplate: {
+			method: 'DELETE',
+			endpoint: '/api/ExecGDAPRoleTemplate',
+			isWrite: true,
+			isList: false,
+			tenant: TENANT.none,
+			params: {
+				TemplateId: P.body('Template ID', true),
+			},
+			description: 'Delete GDAP role template',
+		},
+		traceAccess: {
+			method: 'GET',
+			endpoint: '/api/ExecGDAPTrace',
+			isWrite: false,
+			isList: false,
+			tenant: TENANT.qs,
+			params: {
+				UPN: P.qs('User principal name'),
+			},
+			description: 'Trace GDAP access for a user',
+		},
+	},
+};

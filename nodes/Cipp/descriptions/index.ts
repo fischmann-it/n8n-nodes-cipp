@@ -18,14 +18,8 @@ import {
 	deviceFields,
 	deviceOperations,
 } from './DeviceDescription';
-import {
-	emailSecurityFields,
-	emailSecurityOperations,
-} from './EmailSecurityDescription';
-import {
-	exchangeResourceFields,
-	exchangeResourceOperations,
-} from './ExchangeResourceDescription';
+import { emailSecurityFields, emailSecurityOperations } from './EmailSecurityDescription';
+import { exchangeResourceFields, exchangeResourceOperations } from './ExchangeResourceDescription';
 import { gdapFields, gdapOperations } from './GdapDescription';
 import { groupFields, groupOperations } from './GroupDescription';
 import { identityFields, identityOperations } from './IdentityDescription';
@@ -44,8 +38,9 @@ import { testingFields, testingOperations } from './TestingDescription';
 import { userFields, userOperations } from './UserDescription';
 import { v105Fields, v105Operations } from './V105Description';
 import { v106Fields, v106Operations } from './V106Description';
+import { getAdvancedOnlyResourceFields, mergeAdvancedOperationFields } from './AdvancedOperations';
 
-export const operationFields = [
+const baseOperationFields = [
 	...alertOperations,
 	...applicationOperations,
 	...autopilotOperations,
@@ -77,7 +72,9 @@ export const operationFields = [
 	...voiceOperations,
 ];
 
-export const resourceFields = [
+export const operationFields = mergeAdvancedOperationFields(baseOperationFields);
+
+const baseResourceFields = [
 	...alertFields,
 	...applicationFields,
 	...autopilotFields,
@@ -107,4 +104,9 @@ export const resourceFields = [
 	...v105Fields,
 	...v106Fields,
 	...voiceFields,
+];
+
+export const resourceFields = [
+	...baseResourceFields,
+	...getAdvancedOnlyResourceFields(baseResourceFields),
 ];

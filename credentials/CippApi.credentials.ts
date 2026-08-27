@@ -1,5 +1,6 @@
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IDataObject,
 	IHttpRequestOptions,
@@ -7,17 +8,14 @@ import type {
 	Icon,
 } from 'n8n-workflow';
 
-interface ICippAuthToken {
-	accessToken: string;
-	expiresAt: number;
-}
+import {
+	createCippTokenRequest,
+	getCachedCippAccessToken,
+} from '../nodes/Cipp/CippApiClient';
 
-const tokenCache = new Map<string, ICippAuthToken>();
+const CREDENTIAL_TOKEN_CACHE_NAMESPACE = 'credential-authenticate';
 
-function getCredentialString(
-	credentials: ICredentialDataDecryptedObject,
-	name: string,
-): string {
+function getCredentialString(credentials: ICredentialDataDecryptedObject, name: string): string {
 	const value = credentials[name];
 
 	if (typeof value !== 'string' || value.trim() === '') {
@@ -27,59 +25,39 @@ function getCredentialString(
 	return value.trim();
 }
 
-function getCacheKey(clientId: string, tenantId: string): string {
-	return `${clientId}:${tenantId}`;
-}
-
 async function getAccessToken(credentials: ICredentialDataDecryptedObject): Promise<string> {
 	const tenantId = getCredentialString(credentials, 'tenantId');
 	const clientId = getCredentialString(credentials, 'clientId');
 	const clientSecret = getCredentialString(credentials, 'clientSecret');
-	const cacheKey = getCacheKey(clientId, tenantId);
-	const cached = tokenCache.get(cacheKey);
+	const authCredentials = { baseUrl: '', tenantId, clientId, clientSecret };
 
-	if (cached && cached.expiresAt > Date.now() + 300000) {
-		return cached.accessToken;
-	}
+	return getCachedCippAccessToken(
+		authCredentials,
+		CREDENTIAL_TOKEN_CACHE_NAMESPACE,
+		async () => {
+			const tokenRequest = createCippTokenRequest(authCredentials);
+			const response = await fetch(tokenRequest.url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: tokenRequest.body,
+			});
+			const responseBody = (await response.json().catch(() => ({}))) as IDataObject;
 
-	const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
-	const body = new URLSearchParams({
-		grant_type: 'client_credentials',
-		client_id: clientId,
-		client_secret: clientSecret,
-		scope: `api://${clientId}/.default`,
-	});
+			if (!response.ok || typeof responseBody.access_token !== 'string') {
+				const message =
+					(responseBody.error_description as string | undefined) ||
+					(responseBody.error as string | undefined) ||
+					`Azure AD token request failed with status ${response.status}`;
+				throw new Error(message);
+			}
 
-	const response = await fetch(tokenUrl, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
+			return {
+				accessToken: responseBody.access_token,
+				expiresInSeconds:
+					typeof responseBody.expires_in === 'number' ? responseBody.expires_in : 3600,
+			};
 		},
-		body,
-	});
-
-	const responseBody = (await response.json().catch(() => ({}))) as IDataObject;
-
-	if (!response.ok || typeof responseBody.access_token !== 'string') {
-		tokenCache.delete(cacheKey);
-
-		const message =
-			(responseBody.error_description as string | undefined) ||
-			(responseBody.error as string | undefined) ||
-			`Azure AD token request failed with status ${response.status}`;
-
-		throw new Error(message);
-	}
-
-	const expiresIn =
-		typeof responseBody.expires_in === 'number' ? responseBody.expires_in : 3600;
-
-	tokenCache.set(cacheKey, {
-		accessToken: responseBody.access_token,
-		expiresAt: Date.now() + expiresIn * 1000,
-	});
-
-	return responseBody.access_token;
+	);
 }
 
 export class CippApi implements ICredentialType {
@@ -88,6 +66,13 @@ export class CippApi implements ICredentialType {
 	icon: Icon = 'file:cipp.svg';
 	documentationUrl = 'https://docs.cipp.app/api-documentation/setup-and-authentication';
 	genericAuth = true;
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.baseUrl}}',
+			url: '/api/ListTenants',
+			method: 'GET',
+		},
+	};
 
 	properties: INodeProperties[] = [
 		{
@@ -125,6 +110,52 @@ export class CippApi implements ICredentialType {
 			default: '',
 			required: true,
 			description: 'The Client Secret from your CIPP-SAM Azure AD App Registration',
+		},
+		{
+			displayName: 'Enable Tenant List Cache',
+			name: 'enableTenantCache',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to cache the tenant dropdown list in memory',
+		},
+		{
+			displayName: 'Tenant List Cache TTL',
+			name: 'tenantCacheTtl',
+			type: 'number',
+			default: 30,
+			description: 'How many minutes to retain tenant dropdown results',
+			typeOptions: {
+				minValue: 1,
+				maxValue: 1440,
+			},
+			displayOptions: {
+				show: {
+					enableTenantCache: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Enable Secure Score Cache',
+			name: 'enableSecureScoreCache',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to cache Secure Score responses in memory',
+		},
+		{
+			displayName: 'Secure Score Cache TTL',
+			name: 'secureScoreCacheTtl',
+			type: 'number',
+			default: 60,
+			description: 'How many minutes to retain Secure Score responses',
+			typeOptions: {
+				minValue: 1,
+				maxValue: 1440,
+			},
+			displayOptions: {
+				show: {
+					enableSecureScoreCache: [true],
+				},
+			},
 		},
 	];
 
